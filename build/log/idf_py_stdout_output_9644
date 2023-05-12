@@ -1,0 +1,80 @@
+[1/10] Performing build step for 'bootloader'
+[1/1] cmd.exe /C "cd /D "C:\Users\Diego R\Documents\iot\tarea1\build\bootloader\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.0_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.0.1/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 "C:/Users/Diego R/Documents/iot/tarea1/build/bootloader/bootloader.bin""
+Bootloader binary size 0x6700 bytes. 0x900 bytes (8%) free.
+[2/8] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/tcp_client.c.obj
+C:/Users/Diego R/Documents/iot/tarea1/main/tcp_client.c:40:20: warning: 'payload' defined but not used [-Wunused-variable]
+   40 | static const char *payload = "Message from ESP32 ";
+      |                    ^~~~~~~
+[3/8] Linking C static library esp-idf\main\libmain.a
+[4/8] Generating ld/sections.ld
+[5/8] Linking CXX executable tcp_client.elf
+[6/8] Generating binary image from built executable
+esptool.py v4.5.1
+Creating esp32 image...
+Merged 25 ELF sections
+Successfully created esp32 image.
+Generated C:/Users/Diego R/Documents/iot/tarea1/build/tcp_client.bin
+[7/8] cmd.exe /C "cd /D "C:\Users\Diego R\Documents\iot\tarea1\build\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.0_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.0.1/components/partition_table/check_sizes.py --offset 0x8000 partition --type app "C:/Users/Diego R/Documents/iot/tarea1/build/partition_table/partition-table.bin" "C:/Users/Diego R/Documents/iot/tarea1/build/tcp_client.bin""
+tcp_client.bin binary size 0xb1520 bytes. Smallest app partition is 0x100000 bytes. 0x4eae0 bytes (31%) free.
+[7/8] cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.0.1\components\esptool_py && C:\Espressif\tools\cmake\3.24.0\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.0.1 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.0_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.0.1/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D "WORKING_DIRECTORY=C:/Users/Diego R/Documents/iot/tarea1/build" -P C:/Espressif/frameworks/esp-idf-v5.0.1/components/esptool_py/run_serial_tool.cmake"
+esptool esp32 -p COM6 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 2MB 0x1000 bootloader/bootloader.bin 0x10000 tcp_client.bin 0x8000 partition_table/partition-table.bin
+esptool.py v4.5.1
+Serial port COM6
+Connecting.........
+Chip is ESP32-D0WDQ6 (revision v1.0)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 3c:61:05:65:9d:b8
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x000c1fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Compressed 26368 bytes to 16443...
+Writing at 0x00001000... (50 %)
+Writing at 0x000076b1... (100 %)
+Wrote 26368 bytes (16443 compressed) at 0x00001000 in 0.9 seconds (effective 245.4 kbit/s)...
+Hash of data verified.
+Compressed 726304 bytes to 467931...
+Writing at 0x00010000... (3 %)
+Writing at 0x0001c49d... (6 %)
+Writing at 0x00024047... (10 %)
+Writing at 0x000293a4... (13 %)
+Writing at 0x000322c5... (17 %)
+Writing at 0x00037aad... (20 %)
+Writing at 0x0003d29e... (24 %)
+Writing at 0x0004275c... (27 %)
+Writing at 0x00048040... (31 %)
+Writing at 0x0004d8bc... (34 %)
+Writing at 0x00053209... (37 %)
+Writing at 0x00058f8f... (41 %)
+Writing at 0x0005e6a1... (44 %)
+Writing at 0x000638e3... (48 %)
+Writing at 0x00068d40... (51 %)
+Writing at 0x0006e0fb... (55 %)
+Writing at 0x000736ef... (58 %)
+Writing at 0x00078ef7... (62 %)
+Writing at 0x0007ebfc... (65 %)
+Writing at 0x0008437e... (68 %)
+Writing at 0x00089ebd... (72 %)
+Writing at 0x0009032a... (75 %)
+Writing at 0x00095d7c... (79 %)
+Writing at 0x0009e742... (82 %)
+Writing at 0x000a6823... (86 %)
+Writing at 0x000ad925... (89 %)
+Writing at 0x000b328a... (93 %)
+Writing at 0x000b8d7e... (96 %)
+Writing at 0x000be2a5... (100 %)
+Wrote 726304 bytes (467931 compressed) at 0x00010000 in 11.0 seconds (effective 528.2 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 103...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (103 compressed) at 0x00008000 in 0.1 seconds (effective 262.3 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...

@@ -21,6 +21,260 @@
 #include "addr_from_stdin.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
+#include <math.h>
+#include <stdlib.h>
+#include "esp_mac.h"
+
+//Generacion de datos
+float floatrand(float min, float max){
+    return min + (float)rand()/(float)(RAND_MAX/(max-min));
+}
+
+//Accelerometer sensor
+//accx
+float* acc_sensor_acc_x(){
+    float* arreglo = malloc(sizeof(float)*2000);
+    for(int i = 0; i < 2000; i++){
+        arreglo[i] = 2*sin(2*M_PI*0.001*i);
+    }
+    return arreglo;
+}
+//accy 
+float* acc_sensor_acc_y(){
+    float* arreglo = malloc(sizeof(float)*2000);
+    for(int i = 0; i < 2000; i++){
+        arreglo[i] = 3*cos(2*M_PI*0.001*i);
+    }
+    return arreglo;
+}
+//acc z
+float* acc_sensor_acc_z(){
+    float* arreglo = malloc(sizeof(float)*2000);
+    for(int i = 0; i < 2000; i++){
+        arreglo[i] = 10*sin(2*M_PI*0.001*i);
+    }
+    return arreglo;
+}
+
+//THPC sensor
+//temp
+char THPC_sensor_temp(){
+    char n =(char) 5 + (rand() %25);
+    return n;
+}
+
+//hum
+char THPC_sensor_hum(){
+    return (char)floatrand(30.0, 80.0);
+}
+
+//pres
+int THPC_sensor_pres(){
+    return (rand() % 200) + 1000;
+}
+
+float THPC_sensor_co(){
+    return floatrand(30, 200);
+}
+
+//Battery level
+unsigned char batt_sensor(){
+    return (unsigned char) (rand() % 100);
+}
+
+//Accelerometer kpi
+float Accelerometer_kpi_amp_x(){
+    return floatrand(0.0059, 0.12);
+}
+float Accelerometer_kpi_frec_x(){
+    return floatrand(29.0, 31.0);
+}
+float Accelerometer_kpi_amp_y(){
+    return floatrand(0.0041, 0.11);
+}
+float Accelerometer_kpi_frec_y(){
+    return floatrand(59.0, 61.0);
+}
+float Accelerometer_kpi_amp_z(){
+    return floatrand(0.008, 0.15);
+}
+float Accelerometer_kpi_frec_z(){
+    return floatrand(89.0, 91.0);
+}
+
+float Accelerometer_kpi_RMS(){
+    float ampx = Accelerometer_kpi_amp_x();
+    float ampy = Accelerometer_kpi_amp_y();
+    float ampz = Accelerometer_kpi_amp_z();
+    return sqrt(pow(ampx,2) + pow(ampy,2) + pow(ampz,2));
+}
+
+
+//Empaquetamiento
+unsigned short lengmsg[6] = {2, 6, 16, 20, 44, 12016};
+unsigned short dataLength(char protocol){
+    return lengmsg[ (unsigned int) protocol]-1;
+}
+
+
+// Arma un paquete para el protocolo de inicio, que busca solo respuesta
+char* dataprotocol00(){
+    char* msg = malloc(dataLength(0));
+    msg[0] = 1;
+    return msg;
+}
+
+// Arma un paquete para el protocolo 0, con la bateria
+char* dataprotocol0(){
+    
+    char* msg = malloc(dataLength(1)); //6
+    msg[0] = 1;
+    char batt = batt_sensor();
+    msg[1] = batt;
+    int t = 0; //Este es el timestamp
+    memcpy((void*) &(msg[1]), (void*) &t, 4);
+    return msg;
+}
+
+
+char* dataprotocol1(){
+    char* msg = malloc(dataLength(2)); //16
+    //1 byte
+    msg [0] = 1;
+    //1 byte
+    float batt = batt_sensor();
+    msg[1] = batt;
+    //4 bytes
+    int t = 0;
+    memcpy((void*) &(msg[2]), (void*) &t, 4);
+    //1 byte
+    char temp = THPC_sensor_temp();
+    msg[6] = temp;
+    //4 bytes
+    float press = THPC_sensor_pres();
+    memcpy((void*) &(msg[7]), (void*) &press, 4);
+    //1 byte
+    char hum = THPC_sensor_hum();
+    msg[11] = hum;
+    //4 bytes
+    float co = THPC_sensor_co();
+    memcpy((void*) &(msg[12]), (void*) &co, 4);
+
+    return msg;
+}
+
+char* dataprotocol2(){
+    char* msg = malloc(dataLength(2)); //16
+    //1 byte
+    msg [0] = 1;
+    //1 byte
+    float batt = batt_sensor();
+    msg[1] = batt;
+    //4 bytes
+    int t = 0;
+    memcpy((void*) &(msg[2]), (void*) &t, 4);
+    //1 byte
+    char temp = THPC_sensor_temp();
+    msg[6] = temp;
+    //4 bytes
+    float press = THPC_sensor_pres();
+    memcpy((void*) &(msg[7]), (void*) &press, 4);
+    //1 byte
+    char hum = THPC_sensor_hum();
+    msg[11] = hum;
+    //4 bytes
+    float co = THPC_sensor_co();
+    memcpy((void*) &(msg[12]), (void*) &co, 4);
+    //4 bytes
+    float rms = Accelerometer_kpi_RMS();
+    memcpy((void*) &(msg[16]), (void*) &co, 4);
+    return msg;
+}
+
+char* dataprotocol3(){
+    char* msg = malloc(dataLength(2)); //16
+    //1 byte
+    msg [0] = 1;
+    //1 byte
+    float batt = batt_sensor();
+    msg[1] = batt;
+    //4 bytes
+    int t = 0;
+    memcpy((void*) &(msg[2]), (void*) &t, 4);
+    //1 byte
+    char temp = THPC_sensor_temp();
+    msg[6] = temp;
+    //4 bytes
+    float press = THPC_sensor_pres();
+    memcpy((void*) &(msg[7]), (void*) &press, 4);
+    //1 byte
+    char hum = THPC_sensor_hum();
+    msg[11] = hum;
+    //4 bytes
+    float co = THPC_sensor_co();
+    memcpy((void*) &(msg[12]), (void*) &co, 4);
+    //4 bytes
+    float rms = Accelerometer_kpi_RMS();
+    memcpy((void*) &(msg[16]), (void*) &rms, 4);
+    //4 bytes
+    float ampx = Accelerometer_kpi_amp_x();
+    memcpy((void*) &(msg[20]), (void*) &ampx, 4);
+    //4 bytes
+    float frecx = Accelerometer_kpi_frec_x();
+    memcpy((void*) &(msg[20]), (void*) &frecx, 4);
+    //4 bytes
+    float ampy = Accelerometer_kpi_amp_y();
+    memcpy((void*) &(msg[20]), (void*) &ampy, 4);
+    //4 bytes
+    float frecy = Accelerometer_kpi_frec_y();
+    memcpy((void*) &(msg[20]), (void*) &frecy, 4);
+    //4 bytes
+    float ampz = Accelerometer_kpi_amp_z();
+    memcpy((void*) &(msg[20]), (void*) &ampz, 4);
+    //4 bytes
+    float frecz = Accelerometer_kpi_frec_z();
+    memcpy((void*) &(msg[20]), (void*) &frecz, 4);
+    return msg;
+}
+
+char* mensaje (char protocol, char transportLayer){
+	//char* mnsj = malloc(messageLength(protocol));
+	//mnsj[messageLength(protocol)-1]= '\0';
+    char* mnsj = malloc(dataLength(protocol));
+	mnsj[dataLength(protocol)-1]= '\0';
+	//char* hdr = header(protocol, transportLayer);
+	char* data;
+	switch (protocol) {
+		case 0:
+			data = dataprotocol00();
+			break;
+		case 1:
+			data = dataprotocol0();
+			break;
+		case 2:
+			data = dataprotocol1();
+			break;
+		case 3:
+			data = dataprotocol2();
+			break;
+        case 4:
+			data = dataprotocol3();
+			break;
+        //case 5:
+		//	data = dataprotocol4();
+		//	break;
+		default:
+			data = dataprotocol0();
+			break;
+	}
+	//memcpy((void*) mnsj, (void*) hdr, 12);
+	//memcpy((void*) &(mnsj[12]), (void*) data, dataLength(protocol));
+    memcpy((void*) mnsj, (void*) data, dataLength(protocol));
+	//free(hdr);
+	free(data);
+	return mnsj;
+}
+
 
 
 #if defined(CONFIG_EXAMPLE_IPV4)
@@ -83,7 +337,7 @@ static void tcp_client_task(void *pvParameters)
             char* c = malloc(MSG_SIZE);
             int d = 28;
             int e = 32;
-            //memccpy(c, &a, 4);
+            //memcpy(c, &a, 4);
             memcpy((void*) c, (void*) &d, 4);
             memcpy((void*) &(c[4]), (void*) &e, 4);
 

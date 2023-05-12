@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/Dante/Desktop/Ramos/iot/tcp_client/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from C:/Users/Diego R/Documents/iot/tarea1/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded
