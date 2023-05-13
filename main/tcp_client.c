@@ -108,23 +108,30 @@ float Accelerometer_kpi_RMS(){
     float ampz = Accelerometer_kpi_amp_z();
     return sqrt(pow(ampx,2) + pow(ampy,2) + pow(ampz,2));
 }
-
-
-//Empaquetamiento
+//Empaquetamiento 
 unsigned short lengmsg[6] = {2, 6, 16, 20, 44, 12016};
 unsigned short dataLength(char protocol){
     return lengmsg[ (unsigned int) protocol]-1;
 }
 
-
-// Arma un paquete para el protocolo de inicio, que busca solo respuesta
-char* dataprotocol00(){
-    char* msg = malloc(dataLength(0));
-    msg[0] = 1;
-    return msg;
+//Empaquetamiento del header
+//transport layer 0 es tcp y 1 es udp
+char* header(char protocol, char transportLayer){
+	char* head = malloc(12);
+    uint8_t* MACaddrs = malloc(6);
+	esp_efuse_mac_get_default(MACaddrs);
+    memcpy((void*) &(head[0]), (void*) MACaddrs, 2);
+	memcpy((void*) &(head[2]), (void*) MACaddrs, 6);
+    head[8]= transportLayer;
+	head[9]= protocol;
+	unsigned short dataLen = dataLength(protocol);
+	memcpy((void*) &(head[10]), (void*) &dataLen, 2);
+	free(MACaddrs);
+	return head;
 }
 
-// Arma un paquete para el protocolo 0, con la bateria
+//Empaquetamiento del mensaje
+// Arma un paquete para el protocolo 0
 char* dataprotocol0(){
     
     char* msg = malloc(dataLength(1)); //6
@@ -136,7 +143,7 @@ char* dataprotocol0(){
     return msg;
 }
 
-
+// Arma un paquete segun el protocolo 1
 char* dataprotocol1(){
     char* msg = malloc(dataLength(2)); //16
     //1 byte
@@ -159,10 +166,10 @@ char* dataprotocol1(){
     //4 bytes
     float co = THPC_sensor_co();
     memcpy((void*) &(msg[12]), (void*) &co, 4);
-
     return msg;
 }
 
+// Arma un paquete segun el protocolo 2
 char* dataprotocol2(){
     char* msg = malloc(dataLength(2)); //16
     //1 byte
@@ -187,10 +194,11 @@ char* dataprotocol2(){
     memcpy((void*) &(msg[12]), (void*) &co, 4);
     //4 bytes
     float rms = Accelerometer_kpi_RMS();
-    memcpy((void*) &(msg[16]), (void*) &co, 4);
+    memcpy((void*) &(msg[16]), (void*) &rms, 4);
     return msg;
 }
 
+// Arma un paquete segun el protocolo 3
 char* dataprotocol3(){
     char* msg = malloc(dataLength(2)); //16
     //1 byte
@@ -236,41 +244,47 @@ char* dataprotocol3(){
     memcpy((void*) &(msg[20]), (void*) &frecz, 4);
     return msg;
 }
+// Arma un paquete segun el protocolo 4
+//TODO
+//char* dataprotocol4(){
+//    return;
+//}
 
+unsigned short messageLength(char protocol){
+    int headerLength = 12;
+    return 1+headerLength+dataLength(protocol);
+}
+
+//Empaqueta mensaje
 char* mensaje (char protocol, char transportLayer){
-	//char* mnsj = malloc(messageLength(protocol));
-	//mnsj[messageLength(protocol)-1]= '\0';
-    char* mnsj = malloc(dataLength(protocol));
-	mnsj[dataLength(protocol)-1]= '\0';
-	//char* hdr = header(protocol, transportLayer);
+	char* mnsj = malloc(messageLength(protocol));
+	mnsj[messageLength(protocol)-1]= '\0';
+	char* hdr = header(protocol, transportLayer);
 	char* data;
 	switch (protocol) {
 		case 0:
-			data = dataprotocol00();
-			break;
-		case 1:
 			data = dataprotocol0();
 			break;
-		case 2:
+		case 1:
 			data = dataprotocol1();
 			break;
-		case 3:
+		case 2:
 			data = dataprotocol2();
 			break;
-        case 4:
+        case 3:
 			data = dataprotocol3();
 			break;
-        //case 5:
+        //case 4:
 		//	data = dataprotocol4();
 		//	break;
 		default:
 			data = dataprotocol0();
 			break;
 	}
-	//memcpy((void*) mnsj, (void*) hdr, 12);
-	//memcpy((void*) &(mnsj[12]), (void*) data, dataLength(protocol));
+	memcpy((void*) mnsj, (void*) hdr, 12);
+	memcpy((void*) &(mnsj[12]), (void*) data, dataLength(protocol));
     memcpy((void*) mnsj, (void*) data, dataLength(protocol));
-	//free(hdr);
+	free(hdr);
 	free(data);
 	return mnsj;
 }
@@ -331,7 +345,9 @@ static void tcp_client_task(void *pvParameters)
         }
         ESP_LOGI(TAG, "Successfully connected");
 
-        while (1) {
+        //while (1) {
+        //Solo hace envio de 5 paquetes para pruebas
+        for (int i = 0; i < 5; i++) {
             // char 1 byte
             int MSG_SIZE = 8;
             char* c = malloc(MSG_SIZE);
