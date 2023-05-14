@@ -1,5 +1,20 @@
 import sqlite3 as sql
 
+
+
+# Funcion que elimina las tablas creadas
+def drop_tables():
+    conn = sql.connect("tarea.sqlite")
+    cur = conn.cursor()
+    cur.execute("DROP TABLE data")
+    cur.execute("DROP TABLE logs")
+    cur.execute("DROP TABLE config")
+    cur.execute("DROP TABLE loss")
+    conn.commit()
+    conn.close()
+
+drop_tables()
+
 create_table_data = '''CREATE TABLE data (
     timestamp STRING,
     data STRING,
@@ -41,5 +56,6 @@ cur.execute('''INSERT INTO config values("0", "UDP"), ("1", "UDP"), ("2", "UDP")
 print(cur.execute("SELECT * FROM config").fetchall())
 conn.commit()
 conn.close()
+
 
 # inicializa la BDD
