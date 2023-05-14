@@ -39,7 +39,7 @@ uint32_t get_timestamp() {
 }
 // Arma un paquete para el protocolo 0
 char* dataprotocol0(){
-    
+    ESP_LOGI("breakpoint", "filling with data0");
     char* msg = malloc(dataLength(0)); //6
     msg[0] = 1;
     char batt = batt_sensor();
@@ -51,6 +51,7 @@ char* dataprotocol0(){
 
 // Arma un paquete segun el protocolo 1
 char* dataprotocol1(){
+    ESP_LOGI("breakpoint", "filling with data1");
     char* msg = malloc(dataLength(1)); //16
     //1 byte
     msg [0] = 1;
@@ -77,6 +78,7 @@ char* dataprotocol1(){
 
 // Arma un paquete segun el protocolo 2
 char* dataprotocol2(){
+    ESP_LOGI("breakpoint", "filling with data2");
     char* msg = malloc(dataLength(2)); //16
     //1 byte
     msg [0] = 1;
@@ -106,6 +108,7 @@ char* dataprotocol2(){
 
 // Arma un paquete segun el protocolo 3
 char* dataprotocol3(){
+    ESP_LOGI("breakpoint", "filling with data3");
     char* msg = malloc(dataLength(3)); //16
     //1 byte
     msg [0] = 1;
@@ -152,6 +155,7 @@ char* dataprotocol3(){
 }
 // Arma un paquete segun el protocolo 4
 char* dataprotocol4(){
+    ESP_LOGI("breakpoint", "filling with data4");
     char* msg = malloc(dataLength(4)); //16
     //1 byte
     msg [0] = 1;
@@ -176,21 +180,21 @@ char* dataprotocol4(){
     //8000 bytes
     float* accx = malloc(4000*sizeof(float));
     for (int i = 0; i < 4000; i++){
-        accx[i] = Accelerometer_sensor_acc_x()[i];
+        accx[i] = acc_sensor_acc_x()[i];
     }
     memcpy((void*) &(msg[16]), (void*) accx, 4000);
     //8000 bytes
     float* accy = malloc(4000*sizeof(float));
     for (int i = 0; i < 4000; i++){
-        accy[i] = Accelerometer_sensor_acc_y()[i];
+        accy[i] = acc_sensor_acc_y()[i];
     }
     memcpy((void*) &(msg[4016]), (void*) accy, 4000);
     //8000 bytes
     float* accz = malloc(4000*sizeof(float));
     for (int i = 0; i < 4000; i++){
-        accz[i] = Accelerometer_sensor_acc_z()[i];
+        accz[i] = acc_sensor_acc_z()[i];
     }
-    memccpy((void*) &(msg[8016]), (void*) accz, 4000);
+    memcpy((void*) &(msg[8016]), (void*) accz, 4000);
     return msg;
 }
 
@@ -208,9 +212,13 @@ unsigned short messageLength(char protocol){
 
 //Empaqueta mensaje
 char* mensaje (char protocol, char transportLayer){
+    ESP_LOGI("breakpoint", "1");
 	char* mnsj = malloc(messageLength(protocol));
+    ESP_LOGI("breakpoint", "2");
 	mnsj[messageLength(protocol)-1]= '\0';
+    ESP_LOGI("breakpoint", "3");
 	char* hdr = header(protocol, transportLayer);
+    ESP_LOGI("breakpoint", "4");
 	char* data;
 	switch (protocol) {
 		case 0:
@@ -232,10 +240,14 @@ char* mensaje (char protocol, char transportLayer){
 			data = dataprotocol5();
 			break;
 	}
+    ESP_LOGI("breakpoint", "6");
 	memcpy((void*) mnsj, (void*) hdr, 12);
+    ESP_LOGI("breakpoint", "7");
 	memcpy((void*) &(mnsj[12]), (void*) data, dataLength(protocol));
-    memcpy((void*) mnsj, (void*) data, dataLength(protocol));
+    ESP_LOGI("breakpoint", "8");
 	free(hdr);
 	free(data);
+    ESP_LOGI("breakpoint", "9");
+    ESP_LOGI("breakpoint", "10");
 	return mnsj;
 }
