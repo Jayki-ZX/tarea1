@@ -8,7 +8,7 @@ import sqlite3 as sql
 def consultartabla(nombre):
     with sql.connect("tarea.sqlite") as conn:
         cur = conn.cursor()
-        cur.execute(f"SELECT * FROM {nombre} LIMIT 5")
+        cur.execute(f"SELECT * FROM {nombre}")
         return cur.fetchall()
     
 def guardardatos(headerDict, timestamp, dataDict):
@@ -33,7 +33,7 @@ def guardarconfig(headerDict):
 def guardarLoss(connection_delay, packet_loss):
     with sql.connect("tarea.sqlite") as conn:
         cur = conn.cursor()
-        cur.execute(f"INSERT INTO loss (connection_delay, packet_loss) VALUES (?, ?)", (timestampDiff, 0))
+        cur.execute(f"INSERT INTO loss (connection_delay, packet_loss) VALUES (?, ?)", (connection_delay, 0))
         conn.commit()
 
 #funcion que retorna el valor de protocol y transport layer de la i esima entrada de la tabla config

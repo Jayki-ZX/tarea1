@@ -8,24 +8,25 @@
 #include "esp_timer.h"
 
 //Empaquetamiento 
-unsigned short lengmsg[6] = {2, 6, 16, 20, 44, 12016};
+unsigned short lengmsg[6] = {6, 16, 20, 44, 12016};
 unsigned short dataLength(char protocol){
-    return lengmsg[ (unsigned int) protocol]-1;
+    return lengmsg[ (unsigned int) protocol];
 }
 
 //Empaquetamiento del header
 //transport layer 0 es tcp y 1 es udp
 char* header(char protocol, char transportLayer){
 	char* head = malloc(12);
+    int id_device = 10;
+    memcpy((void*) head, (void*) &id_device, 2);
     uint8_t* MACaddrs = malloc(6);
 	esp_efuse_mac_get_default(MACaddrs);
-    memcpy((void*) &(head[0]), (void*) MACaddrs, 2);
-	memcpy((void*) &(head[2]), (void*) MACaddrs, 6);
+    memcpy((void*) &(head[2]), (void*) MACaddrs, 6);
+	free(MACaddrs);
     head[8]= transportLayer;
 	head[9]= protocol;
 	unsigned short dataLen = dataLength(protocol);
 	memcpy((void*) &(head[10]), (void*) &dataLen, 2);
-	free(MACaddrs);
 	return head;
 }
 
@@ -38,6 +39,7 @@ uint32_t get_timestamp() {
     return timestamp_ms;
 }
 // Arma un paquete para el protocolo 0
+// 18 12hdr 6data
 char* dataprotocol0(){
     ESP_LOGI("breakpoint", "filling with data0");
     char* msg = malloc(dataLength(0)); //6
@@ -159,6 +161,7 @@ char* dataprotocol4(){
     char* msg = malloc(dataLength(4)); //16
     //1 byte
     msg [0] = 1;
+    ESP_LOGI("breakpoint", "1");
     //1 byte
     float batt = batt_sensor();
     msg[1] = batt;
@@ -169,7 +172,9 @@ char* dataprotocol4(){
     char temp = THPC_sensor_temp();
     msg[6] = temp;
     //4 bytes
-    float press = THPC_sensor_pres();
+    ESP_LOGI("breakpoint", "2");
+
+    long press = THPC_sensor_pres();
     memcpy((void*) &(msg[7]), (void*) &press, 4);
     //1 byte
     char hum = THPC_sensor_hum();
@@ -182,6 +187,8 @@ char* dataprotocol4(){
     for (int i = 0; i < 4000; i++){
         accx[i] = acc_sensor_acc_x()[i];
     }
+    ESP_LOGI("breakpoint", "3");
+
     memcpy((void*) &(msg[16]), (void*) accx, 4000);
     //8000 bytes
     float* accy = malloc(4000*sizeof(float));
@@ -194,7 +201,11 @@ char* dataprotocol4(){
     for (int i = 0; i < 4000; i++){
         accz[i] = acc_sensor_acc_z()[i];
     }
+    ESP_LOGI("breakpoint", "4");
+
     memcpy((void*) &(msg[8016]), (void*) accz, 4000);
+    ESP_LOGI("breakpoint", "5");
+
     return msg;
 }
 
@@ -207,18 +218,14 @@ char* dataprotocol5(){
 
 unsigned short messageLength(char protocol){
     int headerLength = 12;
-    return 1+headerLength+dataLength(protocol);
+    return headerLength+dataLength(protocol);
 }
 
 //Empaqueta mensaje
 char* mensaje (char protocol, char transportLayer){
-    ESP_LOGI("breakpoint", "1");
 	char* mnsj = malloc(messageLength(protocol));
-    ESP_LOGI("breakpoint", "2");
-	mnsj[messageLength(protocol)-1]= '\0';
-    ESP_LOGI("breakpoint", "3");
+	//mnsj[messageLength(protocol)-1]= '\0';
 	char* hdr = header(protocol, transportLayer);
-    ESP_LOGI("breakpoint", "4");
 	char* data;
 	switch (protocol) {
 		case 0:
@@ -240,14 +247,9 @@ char* mensaje (char protocol, char transportLayer){
 			data = dataprotocol5();
 			break;
 	}
-    ESP_LOGI("breakpoint", "6");
 	memcpy((void*) mnsj, (void*) hdr, 12);
-    ESP_LOGI("breakpoint", "7");
 	memcpy((void*) &(mnsj[12]), (void*) data, dataLength(protocol));
-    ESP_LOGI("breakpoint", "8");
 	free(hdr);
 	free(data);
-    ESP_LOGI("breakpoint", "9");
-    ESP_LOGI("breakpoint", "10");
 	return mnsj;
 }

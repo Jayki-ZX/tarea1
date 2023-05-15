@@ -33,8 +33,8 @@ int TCP_send_frag(int sock, char transportLayer, char protocolo)
     //Parte el mensaje (payload) en trozos de 1000 btyes y los manda por separado, esperando un OK con cada trozo
     printf("Sending!\n");
     char *payload = mensaje(protocolo, transportLayer);
-    int payloadLen = messageLength(protocolo) - 1;
-    char rx_buffer[128];
+    int payloadLen = messageLength(protocolo);
+    char rx_buffer[10]; // ojo
 
     int PACK_LEN = 1000;
     char* TAG = "TCP_send_frag";
@@ -55,7 +55,7 @@ int TCP_send_frag(int sock, char transportLayer, char protocolo)
         }
 
         // wait for confirmation
-        int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+        int len = recv(sock, rx_buffer, 10, 0);
         // Error occurred during receiving
         if (len < 0)
         {
@@ -100,6 +100,8 @@ int TCP_send_frag(int sock, char transportLayer, char protocolo)
 
 static const char *TAG = "example";
 
+// cambiar flujos de protocolos ojala
+
 void mtcp_send(char* msg, int msg_size) {
     char host_ip[] = HOST_IP_ADDR;
     int addr_family = 0;
@@ -127,27 +129,18 @@ void mtcp_send(char* msg, int msg_size) {
         }
         ESP_LOGI(TAG, "Successfully connected");
 
-        while (1) {
-            // Recibe de parte del server, la indicacion de cual de los protocolos usar y que transport layer
-            int err = send(sock, msg, msg_size, 0);
-            if (err < 0) {
-                ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                break;
-            }
-            ESP_LOGI(TAG, "Message sent");            
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
+        
+        // Recibe de parte del server, la indicacion de cual de los protocolos usar y que transport layer
+        int send_err = send(sock, msg, msg_size, 0);
+        free(msg);
+        if (send_err < 0) {
+            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
             break;
         }
-
-
-
-        if (sock != -1) {
-            ESP_LOGE(TAG, "Shutting down socket and restarting... %d", errno);
-            shutdown(sock, 0);
-            close(sock);
-        }
-
-        ESP_LOGI(TAG, "Shutting down socket because all went well...");
+        ESP_LOGI(TAG, "Message sent");            
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+      
+        ESP_LOGI(TAG, "Shutting down socket.");
         shutdown(sock, 0);
         close(sock);
         break;
@@ -181,45 +174,17 @@ void mudp_send(char* msg, int msg_size) {
 
         ESP_LOGI(TAG, "Socket created, sending to %s:%d", HOST_IP_ADDR, UDP_PORT);
 
-        while(1) {
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-            int err = sendto(sock, msg, msg_size, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-            if (err < 0) {
-                ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                break;
-            }
-            ESP_LOGI(TAG, "Message sent");
+    
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        int err = sendto(sock, msg, msg_size, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+        free(msg);
+        if (err < 0) {
+            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
             break;
-
-            // struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
-            // socklen_t socklen = sizeof(source_addr);
-            // int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-
-            // // Error occurred during receiving
-            // if (len < 0) {
-            //     ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-            //     break;
-            // }
-            // // Data received
-            // else {
-            //     rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-            //     ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-            //     ESP_LOGI(TAG, "%s", rx_buffer);
-            //     if (strncmp(rx_buffer, "OK: ", 4) == 0) {
-            //         ESP_LOGI(TAG, "Received expected message, reconnecting");
-            //         break;
-            //     }
-            // }
-
         }
-
-        if (sock != -1) {
-            ESP_LOGE(TAG, "Shutting down socket and restarting...%d", errno);
-            shutdown(sock, 0);
-            close(sock);
-        }
-
-        ESP_LOGI(TAG, "Shutting down socket because sent went well...");
+        ESP_LOGI(TAG, "Message sent");
+        
+        ESP_LOGI(TAG, "Shutting down socket.");
         shutdown(sock, 0);
         close(sock);
         break;
@@ -273,54 +238,45 @@ static void tcp_client_task(void *pvParameters)
             int len = recv(sock, solicitud_buffer, 2, 0);
             char protocol = solicitud_buffer[0];
             char transportLayer = solicitud_buffer[1];
-            ESP_LOGI("as int", "protocol %d transport_layer %d", protocol, transportLayer);
-            ESP_LOGI("as int", "received %d bytes", len);
+            ESP_LOGI("config", "protocol %d transport_layer %d", protocol, transportLayer);
             free(solicitud_buffer);
-            char options[] = {0,1,2,3,4};
-            ESP_LOGI("index test", "what is this %d", options[(int) protocol]);
 
             // Si el protocolo es 4, envia el mensaje por fragmentos, sino lo envia completo
             if (protocol == 4){
                 ESP_LOGI("debug", "SENDING FRAGMENTED");
-                int err = TCP_send_frag(sock, transportLayer, protocol);
-                if (err < 0) {
-                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                    break;
+                if(transportLayer == 0) {
+                    int err = TCP_send_frag(sock, transportLayer, protocol);
+                    if (err < 0) {
+                        ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+                        break;
+                    }
                 }
+                else if(transportLayer == 1) {
+                    // int err = UDP_send_frag(sock, transportLayer, protocol);
+                    // if (err < 0) {
+                    //     ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+                    //     break;
+                    // }
+                }
+
+                
             }
             else{
                 ESP_LOGI("debug", "Sending normal msg with %d bytes", messageLength(protocol));
                 char* msg = mensaje(protocol, transportLayer);
                 if(transportLayer == 0) { /// TCP
                     mtcp_send(msg, messageLength(protocol));
+                    // esp_deep_sleep_start();
                 }
                 else if(transportLayer == 1) { // UDP
                     mudp_send(msg, messageLength(protocol));
                 }
                 // int err = send(sock, msg, messageLength(protocol), 0);
-                ESP_LOGI("breakpoint", "11");
-                free(msg);
                 if (err < 0) {
                     ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                     break;
                 }
             }
-            //int err = send(sock, msg, MSG_SIZE, 0);
-            //entrar en modo deep sleep por 60 segundos
-            //esp_deep_sleep_start();
-
-            // len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-            // // Error occurred during receiving
-            // if (len < 0) {
-            //     ESP_LOGE(TAG, "recv failed: errno %d", errno);
-            //     break;
-            // }
-            // // Data received
-            // else {
-            //     rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-            //     ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-            //     ESP_LOGI(TAG, "%s", rx_buffer);
-            // }
 
             vTaskDelay(2000 / portTICK_PERIOD_MS);
         }

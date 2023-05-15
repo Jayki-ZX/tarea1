@@ -48,7 +48,7 @@ char THPC_sensor_hum(){
 }
 
 //pres
-int THPC_sensor_pres(){
+long THPC_sensor_pres(){
     return (rand() % 201) + 1000;
 }
 

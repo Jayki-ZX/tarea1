@@ -4,21 +4,23 @@ import traceback
 import time
 import sys
 from DatabaseWork import *
+from juntarFragm import *
 
 #Aun no se define para el protocolo 4
 def protUnpack(protocol:int, data):
-    protocol_unpack = ["<BBl", "<BBlBfBf", "<BBlBfBff", "<BBlBfBffffffff"]
+    protocol_unpack = ["<BBl", "<BBlBfBf", "<BBlBfBff", "<BBlBfBffffffff", "<BBlBlBl2000f2000f2000f"]
     return unpack(protocol_unpack[protocol], data)
 
 def headerUnpack(header):
-    return unpack("<6B2BH", header)
+    return unpack("<h6BBBH", header)
 
 def mainUnpackHeader(header):
-    M1, M2, M3, M4, M5, M6, protocol, status, leng_msg = headerUnpack(header)
+    id_device, M1, M2, M3, M4, M5, M6, transport_layer, protocol, leng_msg = headerUnpack(header)
     MAC = ".".join([hex(x)[2:] for x in [M1, M2, M3, M4, M5, M6]])
-    return {"mac":MAC, "protocol":protocol, "status":status, "length":leng_msg}
+    return {"id_device": id_device, "mac":MAC, "protocol":protocol, "transport_layer":transport_layer, "length":leng_msg}
 
 def mainUnpackData(protocol:int, data):
+    print(data)
     if protocol not in [0, 1, 2, 3, 4]:
         print("Error: protocol doesnt exist")
         return None
@@ -41,20 +43,19 @@ def mainUnpackData(protocol:int, data):
         return None
     
 def mainUnpackPackage(package):
-    header = package[0:10]
-    data = package[10:]
+    header = package[0:12]
+    data = package[12:]
     headerDict = mainUnpackHeader(header)
-    # dataDict = mainUnpackData(header["protocol"], data)
-    dataDict = mainUnpackData(header[9], data)
+    dataDict = mainUnpackData(headerDict["protocol"], data)
     return headerDict, dataDict
 
 #Perdida de paquetes
-lengmsg = [2, 6, 16, 20, 44, 12016]
+lengmsg = [6, 16, 20, 44, 12016]
 def dataLength(protocol):
-    return lengmsg[protocol]-1
+    return lengmsg[protocol]
 
 def messageLength(protocol):
-    return 1+12+dataLength(protocol)
+    return 12+dataLength(protocol)
 
 #Funcion que calcula la perdida de paquetes
 def perdida(data, protocol):
@@ -67,44 +68,40 @@ def perdida(data, protocol):
 PORT = 5000  # Port to listen on (non-privileged ports are > 1023)
 
 def tcp_receive(protocol):
-    # fragment
-    if protocol == 4:
-        pass
-    else:
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind(('', 5001))
-        server.listen(5)
-        print("Waiting for data ...")
-        print(f"Listening on {''}:{5001}")
-        # open tcp server
-        while True:
-            conn2, addr = server.accept()
-            print(f'Conectado por alguien ({addr[0]}) desde el puerto {addr[1]}')
-            print("Recibiendo datos del protocolo {}".format(protocol))
-            # handle the receive process
-            package = conn2.recv(1024) # ojo si necesita mas
-            #header, data = mainUnpackPackage(package)
-            print(f"Recibido el paquete {package}")
-            #print(header)
-            #print(data) 
-            conn2.close()
-            break
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(('', 5001))
+    server.listen(5)
+    print("Waiting for data ...")
+    print(f"Listening on {''}:{5001}")
+    # open tcp server
+    while True:
+        conn2, addr = server.accept()
+        print(f'Conectado por alguien ({addr[0]}) desde el puerto {addr[1]}')
+        print("Recibiendo datos del protocolo {}".format(protocol))
+        # handle the receive process
+        package = conn2.recv(1024) # ojo si necesita mas
+        print("Received {} bytes of data".format(len(package)-12))
+        headerDict, dataDict = mainUnpackPackage(package)
+        guardardatos(headerDict, dataDict["Timestamp"], dataDict)
+        guardarLoss(timestampServer - dataDict["Timestamp"], perdida(package, headerDict["protocol"]))
+        print(f"Recibido el paquete {package}")
+        conn2.close()
+        break
 
 def udp_receive(protocol):
-    # fragment
-    if protocol == 4:
-        pass
-    else:
-        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server.bind(('', 5002))
-        print(f"Listening on {''}:{5002}")
-        print("Waiting for data ...")
-        # open tcp server
-        while True:
-            payload, client_address = server.recvfrom(4096) #ojo si necesita mas
-            print("Received {} from {}".format(payload, client_address))
-            # sent = server.sendto(payload, client_address)
-            break
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.bind(('', 5002))
+    print(f"Listening on {''}:{5002}")
+    print("Waiting for data ...")
+    # open tcp server
+    while True:
+        package, client_address = server.recvfrom(4096) #ojo si necesita mas
+        print("Received {} from {}".format(package, client_address))
+        headerDict, dataDict = mainUnpackPackage(package)
+        guardardatos(headerDict, dataDict["Timestamp"], dataDict)
+        guardarLoss(timestampServer - dataDict["Timestamp"], perdida(package, headerDict["protocol"]))
+        # sent = server.sendto(package, client_address)
+        break
 
 def start_communication(protocol, transport_layer):
     print("Starting protocol {} via {}".format(protocol, transport_layer))
@@ -124,8 +121,6 @@ print(f"Listening on {''}:{PORT}")
 
 while True:
     conn, addr = s.accept()
-    print("conn is")
-    print(conn)
     timestampServer = int(time.time())
     # guardarlogs(headerDict, timestampServer)
     print(f'Conectado por alguien ({addr[0]}) desde el puerto {addr[1]}')
@@ -133,39 +128,15 @@ while True:
     while True:
         configActual = consultarconfig(i) #este i debe corresponder al numero de iteracion en que estamos actualmente
         protocol = configActual[0][0]
-        if protocol == 4:
-            protocol-=1
         transport_layer = configActual[0][1]
-        i = (i+1) % 10
+        i = (i+1) % 8
         config = bytearray()
         config.append(protocol)
         config.append(transport_layer)
-        print("sent {}".format(config))
         print("sent protocol {} via layer {}".format(protocol, transport_layer))
-        print("conn is")
-        print(conn)
         conn.send(config)
-        print("waiting {} bytes of data".format(messageLength(protocol)))
         if transport_layer == 0:
             tcp_receive(protocol)
         elif transport_layer == 1:
             udp_receive(protocol)
-        # data = conn.recv(1024)
-        # print(f"Recibido {data}, {len(data)} bytes of data")
-        # conn.send(configActual)
-        # start_communication(protocol, transport_layer)
-        # try:
-        #     data = conn.recv(1024)
-        #     timestampServer = int(time.time())
-        #     if data == b'':
-        #         break
-        # # except KeyboardInterrupt:
-        #     # break
-        # except ConnectionResetError:
-        #     break
-        # headerDict, dataDict = mainUnpackPackage(data)
-        # guardardatos(headerDict, dataDict["timestamp"], dataDict)
-        # guardarLoss(timestampServer - dataDict["timestamp"], perdida(data, headerDict["protocol"]))
-        # print(f"Recibido {data}")
-        # conn.send(data)
     conn.close()

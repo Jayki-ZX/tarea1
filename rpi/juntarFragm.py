@@ -17,13 +17,13 @@ def TCP_frag_recv(conn):
         conn.send(b'\1')
     return doc
 
-def UDP_frag_recv(s):
+def UDP_frag_recv(sock):
     doc = b""
     addr = None
     while True:
         try:
 
-            data, addr = s.recvfrom(1024)
+            data, addr = sock.recvfrom(1024)
             if data == b'\0':
                 break
             else:
@@ -32,5 +32,5 @@ def UDP_frag_recv(s):
             raise
         except Exception:
             raise
-        # s.sendto(b'\1', addr)
+        sock.sendto(b'\1', addr)
     return (doc, addr)
